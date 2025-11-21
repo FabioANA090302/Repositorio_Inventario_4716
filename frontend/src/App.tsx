@@ -14,11 +14,11 @@ function App() {
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [showResumen, setShowResumen] = useState(false);
   const [cantidades, setCantidades] = useState<{ [key: string]: number }>({});
-  const [ultimoTicket, setUltimoTicket] = useState<number | null>(null);
+  const [ultimoTicket, setUltimoTicket] = useState<number | null>(null); // Nuevo estado para mostrar ticket
 
   // 🔹 obtener lista de laboratorios
   useEffect(() => {
-    fetch("/laboratorios") // <- Ruta relativa
+    fetch("https://repositorio-inventario-4716.onrender.com/laboratorios")
       .then(res => res.json())
       .then(res => setLabs(res.laboratorios));
   }, []);
@@ -27,7 +27,7 @@ function App() {
   useEffect(() => {
     if (!selectedLab) return;
 
-    fetch(`/laboratorio?nombre=${encodeURIComponent(selectedLab)}`) // <- Ruta relativa
+    fetch(`https://repositorio-inventario-4716.onrender.com/laboratorio?nombre=${encodeURIComponent(selectedLab)}`)
       .then(res => res.json())
       .then(res => {
         const filasConId = res.filas.map((fila: any, index: number) => ({ ...fila, id: index }));
@@ -63,7 +63,7 @@ function App() {
 
   // 🔹 Manejar cambio de cantidad en resumen
   const handleCantidadChange = (item: any, value: number) => {
-    const disponible = item["CANT"] || 1;
+    const disponible = item["CANT"] || 1; // si CANT vacío, permite 1
     if (value > disponible) {
       alert(`No hay suficiente existencia. Disponible: ${disponible}`);
       value = disponible;
@@ -83,7 +83,7 @@ function App() {
       }))
     };
 
-    fetch("/pedir", { // <- Ruta relativa
+    fetch("https://repositorio-inventario-4716.onrender.com/pedir", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -91,7 +91,7 @@ function App() {
       .then(res => res.json())
       .then(res => {
         if (res.ok) {
-          setUltimoTicket(res.ticket_id);
+          setUltimoTicket(res.ticket_id);  // Guardamos el ticket
           alert(`Pedido enviado! Ticket #${res.ticket_id}`);
           setSelectedItems([]);
           setCantidades({});

@@ -1,0 +1,15 @@
+# React
+node_modules/
+build/
+dist/
+frontend/node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.env
+
+# IDEs
+.vscode/
+.idea/

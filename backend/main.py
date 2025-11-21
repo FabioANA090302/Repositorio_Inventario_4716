@@ -19,8 +19,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/", StaticFiles(directory="dist", html=True), name="frontend")
-
 # 🔹 Endpoint 1: obtener lista de laboratorios
 @app.get("/laboratorios")
 def obtener_labs():
@@ -67,8 +65,8 @@ def pedir_herramientas(pedido: dict = Body(...)):
         ticket_id = random.randint(1000, 9999)
         email_msg = EmailMessage()
         email_msg["Subject"] = f"Pedido de Herramientas - Ticket #{ticket_id}"
-        email_msg["From"] = os.environ.get("SMTP_USER")       # Reemplaza con tu email real
-        email_msg["To"] = os.environ.get("SMTP_TO") 
+        email_msg["From"] = "ninoaponte63@gmail.com"      # Reemplaza con tu email real
+        email_msg["To"] = "ninoaponte36@hotmail.com"
 
         # Formatear mensaje
         mensaje = f"Ticket #{ticket_id}\nLaboratorio: {pedido.get('laboratorio')}\n\nDetalle del pedido:\n"
@@ -83,8 +81,8 @@ def pedir_herramientas(pedido: dict = Body(...)):
         # Configuración SMTP (Gmail como ejemplo)
         smtp_server = "smtp.gmail.com"
         smtp_port = 587
-        smtp_user = os.environ.get("SMTP_USER")     # Reemplaza con tu correo
-        smtp_password = os.environ.get("SMTP_PASS")     # Usa contraseña de aplicación
+        smtp_user = "ninoaponte63@gmail.com"     # Reemplaza con tu correo
+        smtp_password = "ldluwfrortyxeyyk"     # Usa contraseña de aplicación
 
         with smtplib.SMTP(smtp_server, smtp_port) as smtp:
             smtp.starttls()
