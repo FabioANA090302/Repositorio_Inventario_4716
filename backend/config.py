@@ -1,0 +1,1 @@
+RUTA_EXCEL = r"C:\Users\Fabio\Downloads\Trabajo\Alex\Trabajos\4716\backend\data\inventario electronico andres perez.xlsx"
