@@ -10,23 +10,22 @@ function App() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 30;
 
-  // Estados para selección y pedido
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [showResumen, setShowResumen] = useState(false);
   const [cantidades, setCantidades] = useState<{ [key: string]: number }>({});
-  const [ultimoTicket, setUltimoTicket] = useState<number | null>(null); // Nuevo estado para mostrar ticket
+  const [ultimoTicket, setUltimoTicket] = useState<number | null>(null);
 
-  // 🔹 obtener lista de laboratorios
+  // 🔹 Obtener laboratorios
   useEffect(() => {
     fetch("https://repositorio-inventario-4716.onrender.com/laboratorios")
       .then(res => res.json())
-      .then(res => setLabs(res.laboratorios));
+      .then(res => setLabs(res.laboratorios))
+      .catch(err => console.error(err));
   }, []);
 
-  // 🔹 cargar un laboratorio al seleccionar
+  // 🔹 Cargar laboratorio seleccionado
   useEffect(() => {
     if (!selectedLab) return;
-
     fetch(`https://repositorio-inventario-4716.onrender.com/laboratorio?nombre=${encodeURIComponent(selectedLab)}`)
       .then(res => res.json())
       .then(res => {
@@ -35,19 +34,14 @@ function App() {
         setPage(1);
         setSelectedItems([]);
         setCantidades({});
-      });
+      })
+      .catch(err => console.error(err));
   }, [selectedLab]);
 
-  // 🔍 búsqueda global
-  const filtered = data.filter(item =>
-    JSON.stringify(item).toLowerCase().includes(search.toLowerCase())
-  );
-
-  // 📌 paginación visual
+  const filtered = data.filter(item => JSON.stringify(item).toLowerCase().includes(search.toLowerCase()));
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // 🔹 Toggle de selección
   const toggleSelect = (item: any) => {
     const alreadySelected = selectedItems.find(i => i.id === item.id);
     if (alreadySelected) {
@@ -61,18 +55,13 @@ function App() {
     }
   };
 
-  // 🔹 Manejar cambio de cantidad en resumen
   const handleCantidadChange = (item: any, value: number) => {
-    const disponible = item["CANT"] || 1; // si CANT vacío, permite 1
-    if (value > disponible) {
-      alert(`No hay suficiente existencia. Disponible: ${disponible}`);
-      value = disponible;
-    }
+    const disponible = Number(item["CANT"] || 1);
+    if (value > disponible) value = disponible;
     setCantidades({ ...cantidades, [item.id]: value });
   };
 
-  // 🔹 Confirmar pedido: enviar al backend
-  const confirmarPedido = () => {
+  const confirmarPedido = async () => {
     const payload = {
       laboratorio: selectedLab,
       items: selectedItems.map(item => ({
@@ -83,48 +72,44 @@ function App() {
       }))
     };
 
-    fetch("https://repositorio-inventario-4716.onrender.com/pedir", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-      .then(res => res.json())
-      .then(res => {
-        if (res.ok) {
-          setUltimoTicket(res.ticket_id);  // Guardamos el ticket
-          alert(`Pedido enviado! Ticket #${res.ticket_id}`);
-          setSelectedItems([]);
-          setCantidades({});
-          setShowResumen(false);
-        } else {
-          alert(`Error al enviar pedido: ${res.error}`);
-        }
+    try {
+      const res = await fetch("https://repositorio-inventario-4716.onrender.com/pedir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
+      const data = await res.json();
+      if (data.ok) {
+        setUltimoTicket(data.ticket_id);
+        alert(`Pedido enviado! Ticket #${data.ticket_id}`);
+        setSelectedItems([]);
+        setCantidades({});
+        setShowResumen(false);
+      } else {
+        alert(`Error al enviar pedido: ${data.error}`);
+      }
+    } catch (e: any) {
+      alert(`Error de red: ${e.message}`);
+    }
   };
 
   return (
     <div style={{ padding: 20 }}>
       <h1>Sistema de Pedidos</h1>
 
-      {/* Mostrar ticket último pedido si existe */}
       {ultimoTicket && (
         <div style={{ padding: 10, marginBottom: 20, backgroundColor: "#d4edda", color: "#155724" }}>
           ✅ Pedido enviado correctamente. Tu Ticket es: <strong>{ultimoTicket}</strong>
         </div>
       )}
 
-      {/* 🔹 Buscador */}
       <input
         placeholder="Buscar..."
         value={search}
-        onChange={e => {
-          setSearch(e.target.value);
-          setPage(1);
-        }}
+        onChange={e => { setSearch(e.target.value); setPage(1); }}
         style={{ padding: 10, width: "50%", marginBottom: 20 }}
       />
 
-      {/* 🔹 Pestañas por laboratorio */}
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         {labs.map(lab => (
           <button
@@ -142,7 +127,6 @@ function App() {
         ))}
       </div>
 
-      {/* 🔹 Tabla filtrada */}
       <table border={1} cellPadding={8}>
         <thead>
           <tr>
@@ -174,14 +158,12 @@ function App() {
         </tbody>
       </table>
 
-      {/* 🔹 Paginación */}
       <div style={{ marginTop: 20 }}>
         <button disabled={page === 1} onClick={() => setPage(page - 1)}>⬅ Anterior</button>
         <span style={{ margin: "0 10px" }}>Página {page} de {totalPages}</span>
         <button disabled={page === totalPages} onClick={() => setPage(page + 1)}>Siguiente ➡</button>
       </div>
 
-      {/* 🔹 Botón pedir */}
       <button
         onClick={() => setShowResumen(true)}
         disabled={selectedItems.length === 0}
@@ -190,7 +172,6 @@ function App() {
         Pedir
       </button>
 
-      {/* 🔹 Resumen del pedido */}
       {showResumen && (
         <div style={{ border: "1px solid #333", padding: 20, marginTop: 20 }}>
           <h2>Resumen de Pedido</h2>
