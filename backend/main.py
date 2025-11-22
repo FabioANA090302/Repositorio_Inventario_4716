@@ -2,11 +2,10 @@ from fastapi import FastAPI, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 import pandas as pd
 import os
-import smtplib
-from email.message import EmailMessage
 import random
-
 from config import RUTA_EXCEL  # Asegúrate de tener config.py con RUTA_EXCEL
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 app = FastAPI()
 
@@ -29,8 +28,8 @@ def obtener_labs():
 def obtener_laboratorio(nombre: str = Query(...)):
     try:
         df = pd.read_excel(RUTA_EXCEL, sheet_name=nombre, header=None)
-        encabezados = df.iloc[8]  
-        df = df.iloc[9:]          
+        encabezados = df.iloc[8]
+        df = df.iloc[9:]
         df.columns = encabezados
         df = df.dropna(axis=1, how='all')
         df = df.dropna(how='all')
@@ -40,6 +39,7 @@ def obtener_laboratorio(nombre: str = Query(...)):
     filas = df.fillna("").to_dict(orient="records")
     for idx, fila in enumerate(filas):
         fila["id"] = idx
+
     return {
         "laboratorio": nombre,
         "columnas": list(df.columns),
@@ -51,38 +51,36 @@ def obtener_laboratorio(nombre: str = Query(...)):
 def pedir_herramientas(pedido: dict = Body(...)):
     try:
         print("POST recibido en /pedir:", pedido)
-
         ticket_id = random.randint(1000, 9999)
 
-        # Configuración desde variables de entorno
+        # Variables de entorno
+        sendgrid_api_key = os.environ.get("SENDGRID_API_KEY")
         smtp_user = os.environ.get("SMTP_USER")
-        smtp_pass = os.environ.get("SMTP_PASS")
         smtp_to = os.environ.get("SMTP_TO")
 
-        if not smtp_user or not smtp_pass or not smtp_to:
-            return {"ok": False, "error": "Variables SMTP no configuradas"}
+        if not sendgrid_api_key or not smtp_user or not smtp_to:
+            return {"ok": False, "error": "Variables SendGrid/SMTP no configuradas"}
 
-        email_msg = EmailMessage()
-        email_msg["Subject"] = f"Pedido de Herramientas - Ticket #{ticket_id}"
-        email_msg["From"] = smtp_user
-        email_msg["To"] = smtp_to
-
-        mensaje = f"Ticket #{ticket_id}\nLaboratorio: {pedido.get('laboratorio')}\n\nDetalle del pedido:\n"
+        # Construir mensaje
+        mensaje_texto = f"Ticket #{ticket_id}\nLaboratorio: {pedido.get('laboratorio')}\n\nDetalle del pedido:\n"
         for item in pedido.get("items", []):
             cantidad = int(item.get("CANT", 1))
             descripcion = item.get("DESCRIPCIÓN", "")
             ubicacion = item.get("UBICACIÓN", "")
-            mensaje += f"- {cantidad} x {descripcion} (Ubicación: {ubicacion})\n"
+            mensaje_texto += f"- {cantidad} x {descripcion} (Ubicación: {ubicacion})\n"
 
-        email_msg.set_content(mensaje)
+        # Crear email con SendGrid
+        mensaje = Mail(
+            from_email=smtp_user,
+            to_emails=smtp_to,
+            subject=f"Pedido de Herramientas - Ticket #{ticket_id}",
+            plain_text_content=mensaje_texto
+        )
 
-        # SMTP
-        with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
-            smtp.starttls()
-            smtp.login(smtp_user, smtp_pass)
-            smtp.send_message(email_msg)
+        sg = SendGridAPIClient(sendgrid_api_key)
+        sg.send(mensaje)
 
-        return {"ok": True, "ticket_id": ticket_id}
+        return {"ok": True, "ticket_id": ticket_id, "mensaje": "Pedido enviado por correo con SendGrid"}
 
     except Exception as e:
         print("Error al enviar pedido:", e)
